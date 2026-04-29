@@ -293,6 +293,67 @@ class WooCommerce {
 					'required'   => [ 'product_id' ],
 				],
 			],
+			[
+				'name'        => 'wc_get_product_attributes',
+				'description' => 'List all registered global WooCommerce product attributes with their pa_* taxonomy slugs and IDs. Use this before wc_set_product_attributes or wc_get_attribute_terms to discover correct attribute IDs and slugs.',
+				'inputSchema' => [
+					'type'       => 'object',
+					'properties' => [],
+				],
+			],
+			[
+				'name'        => 'wc_get_attribute_terms',
+				'description' => 'List all valid term options for a global WooCommerce attribute (e.g. all colours for pa_color). Pass the taxonomy slug (pa_*) returned by wc_get_product_attributes.',
+				'inputSchema' => [
+					'type'       => 'object',
+					'properties' => [
+						'taxonomy'     => [ 'type' => 'string', 'description' => 'Attribute taxonomy slug, e.g. pa_color (returned by wc_get_product_attributes)' ],
+						'attribute_id' => [ 'type' => 'integer', 'description' => 'Attribute ID (alternative to taxonomy)' ],
+						'hide_empty'   => [ 'type' => 'boolean', 'description' => 'Exclude terms with no products (default false)' ],
+					],
+				],
+			],
+			[
+				'name'        => 'wc_create_product_attribute',
+				'description' => 'Register a new global WooCommerce product attribute taxonomy (e.g. "Color" becomes pa_color). Returns the new attribute ID and pa_* slug.',
+				'inputSchema' => [
+					'type'       => 'object',
+					'properties' => [
+						'name'         => [ 'type' => 'string', 'description' => 'Attribute label shown in admin (e.g. Color)' ],
+						'slug'         => [ 'type' => 'string', 'description' => 'Slug without pa_ prefix (auto-derived from name if omitted)' ],
+						'type'         => [ 'type' => 'string', 'enum' => [ 'select', 'text', 'color', 'image', 'button' ], 'description' => 'Field type (default select)' ],
+						'order_by'     => [ 'type' => 'string', 'enum' => [ 'menu_order', 'name', 'name_num', 'id' ], 'description' => 'Default sort order for terms (default menu_order)' ],
+						'has_archives' => [ 'type' => 'boolean', 'description' => 'Enable public attribute archive pages (default false)' ],
+					],
+					'required'   => [ 'name' ],
+				],
+			],
+			[
+				'name'        => 'wc_set_product_attributes',
+				'description' => 'Set which attributes a variable product uses — required before creating variations. For global attributes supply the attribute id (from wc_get_product_attributes) and options as term slugs or names. For custom (non-global) attributes use id 0 and supply a name.',
+				'inputSchema' => [
+					'type'       => 'object',
+					'properties' => [
+						'product_id' => [ 'type' => 'integer', 'description' => 'Product ID' ],
+						'attributes' => [
+							'type'        => 'array',
+							'description' => 'Attribute definitions',
+							'items'       => [
+								'type'       => 'object',
+								'properties' => [
+									'id'        => [ 'type' => 'integer', 'description' => 'Global attribute ID (0 for custom attribute)' ],
+									'name'      => [ 'type' => 'string', 'description' => 'Custom attribute name (required when id is 0)' ],
+									'options'   => [ 'type' => 'array', 'items' => [ 'type' => 'string' ], 'description' => 'Term slugs/names (global) or plain values (custom)' ],
+									'position'  => [ 'type' => 'integer', 'description' => 'Sort order (auto-assigned if omitted)' ],
+									'visible'   => [ 'type' => 'boolean', 'description' => 'Show on product page (default true)' ],
+									'variation' => [ 'type' => 'boolean', 'description' => 'Used for variation selection (default false)' ],
+								],
+							],
+						],
+					],
+					'required'   => [ 'product_id', 'attributes' ],
+				],
+			],
 		];
 	}
 
@@ -561,6 +622,119 @@ class WooCommerce {
 				}
 				\WC_Product_Variable::sync( $product );
 				return $result;
+
+			case 'wc_get_product_attributes':
+				$attributes = wc_get_attribute_taxonomies();
+				return array_values( array_map( function( $attr ) {
+					return [
+						'id'           => (int) $attr->attribute_id,
+						'name'         => $attr->attribute_label,
+						'slug'         => wc_attribute_taxonomy_name( $attr->attribute_name ),
+						'type'         => $attr->attribute_type,
+						'order_by'     => $attr->attribute_orderby,
+						'has_archives' => (bool) $attr->attribute_public,
+					];
+				}, $attributes ) );
+
+			case 'wc_get_attribute_terms':
+				if ( ! empty( $args['attribute_id'] ) ) {
+					$attr_obj = wc_get_attribute( intval( $args['attribute_id'] ) );
+					if ( ! $attr_obj || is_wp_error( $attr_obj ) ) {
+						throw new \Exception( 'Attribute not found' );
+					}
+					$taxonomy = wc_attribute_taxonomy_name( $attr_obj->slug );
+				} elseif ( ! empty( $args['taxonomy'] ) ) {
+					$taxonomy = sanitize_text_field( $args['taxonomy'] );
+				} else {
+					throw new \Exception( 'Either taxonomy or attribute_id is required' );
+				}
+				if ( ! taxonomy_exists( $taxonomy ) ) {
+					throw new \Exception( 'Taxonomy does not exist: ' . esc_html( $taxonomy ) );
+				}
+				$terms = get_terms( [
+					'taxonomy'   => $taxonomy,
+					'hide_empty' => (bool) ( $args['hide_empty'] ?? false ),
+				] );
+				if ( is_wp_error( $terms ) ) {
+					throw new \Exception( $terms->get_error_message() );
+				}
+				return array_values( array_map( function( $term ) {
+					return [
+						'id'    => $term->term_id,
+						'name'  => $term->name,
+						'slug'  => $term->slug,
+						'count' => $term->count,
+					];
+				}, $terms ) );
+
+			case 'wc_create_product_attribute':
+				$attr_data = [
+					'name'         => sanitize_text_field( $args['name'] ),
+					'slug'         => sanitize_title( $args['slug'] ?? $args['name'] ),
+					'type'         => in_array( $args['type'] ?? 'select', [ 'select', 'text', 'color', 'image', 'button' ], true ) ? ( $args['type'] ?? 'select' ) : 'select',
+					'order_by'     => in_array( $args['order_by'] ?? 'menu_order', [ 'menu_order', 'name', 'name_num', 'id' ], true ) ? ( $args['order_by'] ?? 'menu_order' ) : 'menu_order',
+					'has_archives' => (bool) ( $args['has_archives'] ?? false ),
+				];
+				$new_id = wc_create_attribute( $attr_data );
+				if ( is_wp_error( $new_id ) ) {
+					throw new \Exception( $new_id->get_error_message() );
+				}
+				$new_taxonomy = wc_attribute_taxonomy_name( $attr_data['slug'] );
+				if ( ! taxonomy_exists( $new_taxonomy ) ) {
+					wc_register_attribute_taxonomies();
+				}
+				return [
+					'id'      => $new_id,
+					'slug'    => $new_taxonomy,
+					'message' => 'Attribute created successfully',
+				];
+
+			case 'wc_set_product_attributes':
+				$product = wc_get_product( intval( $args['product_id'] ) );
+				if ( ! $product ) {
+					throw new \Exception( 'Product not found' );
+				}
+				$product_attributes = [];
+				$auto_position      = 0;
+				foreach ( $args['attributes'] as $attr_data ) {
+					$attribute = new \WC_Product_Attribute();
+					$attr_id   = intval( $attr_data['id'] ?? 0 );
+					$attribute->set_id( $attr_id );
+					$attribute->set_position( isset( $attr_data['position'] ) ? intval( $attr_data['position'] ) : $auto_position );
+					$attribute->set_visible( (bool) ( $attr_data['visible'] ?? true ) );
+					$attribute->set_variation( (bool) ( $attr_data['variation'] ?? false ) );
+					if ( $attr_id > 0 ) {
+						$global_attr = wc_get_attribute( $attr_id );
+						if ( ! $global_attr || is_wp_error( $global_attr ) ) {
+							throw new \Exception( 'Attribute ID not found: ' . $attr_id );
+						}
+						$taxonomy = wc_attribute_taxonomy_name( $global_attr->slug );
+						$attribute->set_name( $taxonomy );
+						$term_ids = [];
+						foreach ( $attr_data['options'] ?? [] as $option ) {
+							$term = get_term_by( 'slug', sanitize_title( $option ), $taxonomy );
+							if ( ! $term ) {
+								$term = get_term_by( 'name', sanitize_text_field( $option ), $taxonomy );
+							}
+							if ( $term ) {
+								$term_ids[] = $term->term_id;
+							}
+						}
+						$attribute->set_options( $term_ids );
+					} else {
+						$attribute->set_name( sanitize_text_field( $attr_data['name'] ?? '' ) );
+						$attribute->set_options( array_map( 'sanitize_text_field', $attr_data['options'] ?? [] ) );
+					}
+					$product_attributes[] = $attribute;
+					++$auto_position;
+				}
+				$product->set_attributes( $product_attributes );
+				$product->save();
+				return [
+					'id'              => intval( $args['product_id'] ),
+					'attribute_count' => count( $product_attributes ),
+					'message'         => 'Product attributes updated successfully',
+				];
 
 			default:
 				throw new \Exception( 'Unknown WooCommerce tool: ' . esc_html( $name ) );
