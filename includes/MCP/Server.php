@@ -761,7 +761,7 @@ class Server {
                     'jsonrpc' => '2.0',
                     'id' => $id,
                     'result' => [
-                        'protocolVersion' => '2025-03-26',
+                        'protocolVersion' => '2025-11-25',
                         'serverInfo' => [
                             'name' => 'Royal MCP WordPress',
                             'version' => ROYAL_MCP_VERSION,
