@@ -149,6 +149,150 @@ class WooCommerce {
 					],
 				],
 			],
+			[
+				'name'        => 'wc_get_product_variations',
+				'description' => 'Get all variations for a variable WooCommerce product',
+				'inputSchema' => [
+					'type'       => 'object',
+					'properties' => [
+						'product_id' => [ 'type' => 'integer', 'description' => 'Parent variable product ID' ],
+						'per_page'   => [ 'type' => 'integer', 'description' => 'Number of variations to return (max 100)' ],
+					],
+					'required'   => [ 'product_id' ],
+				],
+			],
+			[
+				'name'        => 'wc_get_variation',
+				'description' => 'Get a single product variation by ID',
+				'inputSchema' => [
+					'type'       => 'object',
+					'properties' => [
+						'product_id'   => [ 'type' => 'integer', 'description' => 'Parent product ID' ],
+						'variation_id' => [ 'type' => 'integer', 'description' => 'Variation ID' ],
+					],
+					'required'   => [ 'product_id', 'variation_id' ],
+				],
+			],
+			[
+				'name'        => 'wc_create_variation',
+				'description' => 'Create a new variation for a variable product',
+				'inputSchema' => [
+					'type'       => 'object',
+					'properties' => [
+						'product_id'     => [ 'type' => 'integer', 'description' => 'Parent variable product ID' ],
+						'attributes'     => [
+							'type'        => 'array',
+							'description' => 'Variation attributes, e.g. [{"name":"color","option":"red"}]',
+							'items'       => [
+								'type'       => 'object',
+								'properties' => [
+									'name'   => [ 'type' => 'string' ],
+									'option' => [ 'type' => 'string' ],
+								],
+							],
+						],
+						'regular_price'  => [ 'type' => 'string', 'description' => 'Regular price' ],
+						'sale_price'     => [ 'type' => 'string', 'description' => 'Sale price' ],
+						'sku'            => [ 'type' => 'string', 'description' => 'SKU' ],
+						'status'         => [ 'type' => 'string', 'enum' => [ 'publish', 'private' ] ],
+						'manage_stock'   => [ 'type' => 'boolean', 'description' => 'Enable stock management' ],
+						'stock_quantity' => [ 'type' => 'integer', 'description' => 'Stock quantity' ],
+						'stock_status'   => [ 'type' => 'string', 'enum' => [ 'instock', 'outofstock', 'onbackorder' ] ],
+						'weight'         => [ 'type' => 'string', 'description' => 'Weight' ],
+						'dimensions'     => [
+							'type'        => 'object',
+							'description' => 'Product dimensions',
+							'properties'  => [
+								'length' => [ 'type' => 'string' ],
+								'width'  => [ 'type' => 'string' ],
+								'height' => [ 'type' => 'string' ],
+							],
+						],
+						'description'    => [ 'type' => 'string', 'description' => 'Variation description' ],
+						'image_id'       => [ 'type' => 'integer', 'description' => 'Image attachment ID' ],
+					],
+					'required'   => [ 'product_id' ],
+				],
+			],
+			[
+				'name'        => 'wc_update_variation',
+				'description' => 'Update an existing product variation',
+				'inputSchema' => [
+					'type'       => 'object',
+					'properties' => [
+						'product_id'     => [ 'type' => 'integer', 'description' => 'Parent product ID' ],
+						'variation_id'   => [ 'type' => 'integer', 'description' => 'Variation ID' ],
+						'attributes'     => [
+							'type'  => 'array',
+							'items' => [
+								'type'       => 'object',
+								'properties' => [
+									'name'   => [ 'type' => 'string' ],
+									'option' => [ 'type' => 'string' ],
+								],
+							],
+						],
+						'regular_price'  => [ 'type' => 'string' ],
+						'sale_price'     => [ 'type' => 'string' ],
+						'sku'            => [ 'type' => 'string' ],
+						'status'         => [ 'type' => 'string', 'enum' => [ 'publish', 'private' ] ],
+						'manage_stock'   => [ 'type' => 'boolean' ],
+						'stock_quantity' => [ 'type' => 'integer' ],
+						'stock_status'   => [ 'type' => 'string', 'enum' => [ 'instock', 'outofstock', 'onbackorder' ] ],
+						'weight'         => [ 'type' => 'string' ],
+						'dimensions'     => [
+							'type'       => 'object',
+							'properties' => [
+								'length' => [ 'type' => 'string' ],
+								'width'  => [ 'type' => 'string' ],
+								'height' => [ 'type' => 'string' ],
+							],
+						],
+						'description'    => [ 'type' => 'string' ],
+						'image_id'       => [ 'type' => 'integer' ],
+					],
+					'required'   => [ 'product_id', 'variation_id' ],
+				],
+			],
+			[
+				'name'        => 'wc_delete_variation',
+				'description' => 'Delete a product variation',
+				'inputSchema' => [
+					'type'       => 'object',
+					'properties' => [
+						'product_id'   => [ 'type' => 'integer', 'description' => 'Parent product ID' ],
+						'variation_id' => [ 'type' => 'integer', 'description' => 'Variation ID' ],
+						'force'        => [ 'type' => 'boolean', 'description' => 'Permanently delete (true) or trash (false). Default true.' ],
+					],
+					'required'   => [ 'product_id', 'variation_id' ],
+				],
+			],
+			[
+				'name'        => 'wc_batch_update_variations',
+				'description' => 'Batch create, update, and/or delete product variations in one call',
+				'inputSchema' => [
+					'type'       => 'object',
+					'properties' => [
+						'product_id' => [ 'type' => 'integer', 'description' => 'Parent variable product ID' ],
+						'create'     => [
+							'type'        => 'array',
+							'description' => 'Variations to create (same fields as wc_create_variation minus product_id)',
+							'items'       => [ 'type' => 'object' ],
+						],
+						'update'     => [
+							'type'        => 'array',
+							'description' => 'Variations to update — each must include variation_id',
+							'items'       => [ 'type' => 'object' ],
+						],
+						'delete'     => [
+							'type'        => 'array',
+							'description' => 'Variation IDs to permanently delete',
+							'items'       => [ 'type' => 'integer' ],
+						],
+					],
+					'required'   => [ 'product_id' ],
+				],
+			],
 		];
 	}
 
@@ -314,6 +458,110 @@ class WooCommerce {
 			case 'wc_get_store_stats':
 				return self::get_store_stats( $args['period'] ?? 'month' );
 
+			case 'wc_get_product_variations':
+				$product = wc_get_product( intval( $args['product_id'] ) );
+				if ( ! $product ) {
+					throw new \Exception( 'Product not found' );
+				}
+				if ( ! $product->is_type( 'variable' ) ) {
+					throw new \Exception( 'Product is not a variable product' );
+				}
+				$limit         = min( intval( $args['per_page'] ?? 100 ), 100 );
+				$variation_ids = array_slice( $product->get_children(), 0, $limit );
+				$variations    = array_filter( array_map( 'wc_get_product', $variation_ids ) );
+				return array_values( array_map( [ __CLASS__, 'format_variation' ], $variations ) );
+
+			case 'wc_get_variation':
+				$variation = wc_get_product( intval( $args['variation_id'] ) );
+				if ( ! $variation || ! $variation->is_type( 'variation' ) ) {
+					throw new \Exception( 'Variation not found' );
+				}
+				if ( $variation->get_parent_id() !== intval( $args['product_id'] ) ) {
+					throw new \Exception( 'Variation does not belong to the specified product' );
+				}
+				return self::format_variation( $variation );
+
+			case 'wc_create_variation':
+				$product = wc_get_product( intval( $args['product_id'] ) );
+				if ( ! $product ) {
+					throw new \Exception( 'Product not found' );
+				}
+				if ( ! $product->is_type( 'variable' ) ) {
+					throw new \Exception( 'Product is not a variable product' );
+				}
+				$variation = new \WC_Product_Variation();
+				$variation->set_parent_id( intval( $args['product_id'] ) );
+				self::apply_variation_fields( $variation, $args );
+				$variation_id = $variation->save();
+				if ( ! $variation_id ) {
+					throw new \Exception( 'Failed to create variation' );
+				}
+				\WC_Product_Variable::sync( $product );
+				return [ 'id' => $variation_id, 'message' => 'Variation created successfully' ];
+
+			case 'wc_update_variation':
+				$variation = wc_get_product( intval( $args['variation_id'] ) );
+				if ( ! $variation || ! $variation->is_type( 'variation' ) ) {
+					throw new \Exception( 'Variation not found' );
+				}
+				if ( $variation->get_parent_id() !== intval( $args['product_id'] ) ) {
+					throw new \Exception( 'Variation does not belong to the specified product' );
+				}
+				self::apply_variation_fields( $variation, $args );
+				$variation->save();
+				return [ 'id' => intval( $args['variation_id'] ), 'message' => 'Variation updated successfully' ];
+
+			case 'wc_delete_variation':
+				$variation = wc_get_product( intval( $args['variation_id'] ) );
+				if ( ! $variation || ! $variation->is_type( 'variation' ) ) {
+					throw new \Exception( 'Variation not found' );
+				}
+				if ( $variation->get_parent_id() !== intval( $args['product_id'] ) ) {
+					throw new \Exception( 'Variation does not belong to the specified product' );
+				}
+				$force = isset( $args['force'] ) ? (bool) $args['force'] : true;
+				$variation->delete( $force );
+				return [ 'id' => intval( $args['variation_id'] ), 'deleted' => true, 'force' => $force ];
+
+			case 'wc_batch_update_variations':
+				$product = wc_get_product( intval( $args['product_id'] ) );
+				if ( ! $product ) {
+					throw new \Exception( 'Product not found' );
+				}
+				if ( ! $product->is_type( 'variable' ) ) {
+					throw new \Exception( 'Product is not a variable product' );
+				}
+				$result = [ 'create' => [], 'update' => [], 'delete' => [] ];
+				foreach ( $args['create'] ?? [] as $data ) {
+					$variation = new \WC_Product_Variation();
+					$variation->set_parent_id( intval( $args['product_id'] ) );
+					self::apply_variation_fields( $variation, $data );
+					$new_id            = $variation->save();
+					$result['create'][] = [ 'id' => $new_id ];
+				}
+				foreach ( $args['update'] ?? [] as $data ) {
+					$var_id    = intval( $data['variation_id'] ?? 0 );
+					$variation = wc_get_product( $var_id );
+					if ( ! $variation || ! $variation->is_type( 'variation' ) ) {
+						$result['update'][] = [ 'id' => $var_id, 'error' => 'Not found' ];
+						continue;
+					}
+					self::apply_variation_fields( $variation, $data );
+					$variation->save();
+					$result['update'][] = [ 'id' => $var_id ];
+				}
+				foreach ( $args['delete'] ?? [] as $var_id ) {
+					$variation = wc_get_product( intval( $var_id ) );
+					if ( ! $variation || ! $variation->is_type( 'variation' ) ) {
+						$result['delete'][] = [ 'id' => $var_id, 'error' => 'Not found' ];
+						continue;
+					}
+					$variation->delete( true );
+					$result['delete'][] = [ 'id' => $var_id, 'deleted' => true ];
+				}
+				\WC_Product_Variable::sync( $product );
+				return $result;
+
 			default:
 				throw new \Exception( 'Unknown WooCommerce tool: ' . esc_html( $name ) );
 		}
@@ -394,6 +642,95 @@ class WooCommerce {
 			'date_created'    => $order->get_date_created() ? $order->get_date_created()->format( 'Y-m-d H:i:s' ) : null,
 			'date_paid'       => $order->get_date_paid() ? $order->get_date_paid()->format( 'Y-m-d H:i:s' ) : null,
 		];
+	}
+
+	private static function format_variation( $variation ) {
+		$attributes = [];
+		foreach ( $variation->get_attributes() as $name => $value ) {
+			$attributes[] = [ 'name' => $name, 'option' => $value ];
+		}
+		return [
+			'id'             => $variation->get_id(),
+			'parent_id'      => $variation->get_parent_id(),
+			'status'         => $variation->get_status(),
+			'sku'            => $variation->get_sku(),
+			'price'          => $variation->get_price(),
+			'regular_price'  => $variation->get_regular_price(),
+			'sale_price'     => $variation->get_sale_price(),
+			'stock_status'   => $variation->get_stock_status(),
+			'stock_quantity' => $variation->get_stock_quantity(),
+			'manage_stock'   => $variation->get_manage_stock(),
+			'weight'         => $variation->get_weight(),
+			'dimensions'     => [
+				'length' => $variation->get_length(),
+				'width'  => $variation->get_width(),
+				'height' => $variation->get_height(),
+			],
+			'description'    => $variation->get_description(),
+			'image_id'       => $variation->get_image_id(),
+			'attributes'     => $attributes,
+			'date_created'   => $variation->get_date_created() ? $variation->get_date_created()->format( 'Y-m-d H:i:s' ) : null,
+			'date_modified'  => $variation->get_date_modified() ? $variation->get_date_modified()->format( 'Y-m-d H:i:s' ) : null,
+		];
+	}
+
+	private static function apply_variation_fields( \WC_Product_Variation $variation, array $args ) {
+		if ( isset( $args['attributes'] ) ) {
+			$variation->set_attributes( self::parse_variation_attributes( $args['attributes'] ) );
+		}
+		if ( isset( $args['regular_price'] ) ) {
+			$variation->set_regular_price( sanitize_text_field( $args['regular_price'] ) );
+		}
+		if ( isset( $args['sale_price'] ) ) {
+			$variation->set_sale_price( sanitize_text_field( $args['sale_price'] ) );
+		}
+		if ( isset( $args['sku'] ) ) {
+			$variation->set_sku( sanitize_text_field( $args['sku'] ) );
+		}
+		if ( isset( $args['status'] ) ) {
+			$variation->set_status( in_array( $args['status'], [ 'publish', 'private' ], true ) ? $args['status'] : 'publish' );
+		}
+		if ( isset( $args['manage_stock'] ) ) {
+			$variation->set_manage_stock( (bool) $args['manage_stock'] );
+		}
+		if ( isset( $args['stock_quantity'] ) ) {
+			$variation->set_stock_quantity( intval( $args['stock_quantity'] ) );
+		}
+		if ( isset( $args['stock_status'] ) ) {
+			$variation->set_stock_status( sanitize_text_field( $args['stock_status'] ) );
+		}
+		if ( isset( $args['weight'] ) ) {
+			$variation->set_weight( sanitize_text_field( $args['weight'] ) );
+		}
+		if ( isset( $args['dimensions'] ) ) {
+			if ( isset( $args['dimensions']['length'] ) ) {
+				$variation->set_length( sanitize_text_field( $args['dimensions']['length'] ) );
+			}
+			if ( isset( $args['dimensions']['width'] ) ) {
+				$variation->set_width( sanitize_text_field( $args['dimensions']['width'] ) );
+			}
+			if ( isset( $args['dimensions']['height'] ) ) {
+				$variation->set_height( sanitize_text_field( $args['dimensions']['height'] ) );
+			}
+		}
+		if ( isset( $args['description'] ) ) {
+			$variation->set_description( wp_kses_post( $args['description'] ) );
+		}
+		if ( isset( $args['image_id'] ) ) {
+			$variation->set_image_id( intval( $args['image_id'] ) );
+		}
+	}
+
+	private static function parse_variation_attributes( array $attributes ) {
+		$parsed = [];
+		foreach ( $attributes as $attr ) {
+			if ( empty( $attr['name'] ) || ! isset( $attr['option'] ) ) {
+				continue;
+			}
+			// sanitize_title converts "Color" -> "color", "pa_Color" -> "pa_color"
+			$parsed[ sanitize_title( $attr['name'] ) ] = sanitize_text_field( $attr['option'] );
+		}
+		return $parsed;
 	}
 
 	private static function get_store_stats( $period ) {
