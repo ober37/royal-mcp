@@ -642,7 +642,8 @@ class WooCommerce {
 					if ( ! $attr_obj || is_wp_error( $attr_obj ) ) {
 						throw new \Exception( 'Attribute not found' );
 					}
-					$taxonomy = wc_attribute_taxonomy_name( $attr_obj->slug );
+					// wc_get_attribute() returns slug already prefixed with pa_; don't double-prefix.
+					$taxonomy = $attr_obj->slug;
 				} elseif ( ! empty( $args['taxonomy'] ) ) {
 					$taxonomy = sanitize_text_field( $args['taxonomy'] );
 				} else {
@@ -680,9 +681,6 @@ class WooCommerce {
 					throw new \Exception( $new_id->get_error_message() );
 				}
 				$new_taxonomy = wc_attribute_taxonomy_name( $attr_data['slug'] );
-				if ( ! taxonomy_exists( $new_taxonomy ) ) {
-					wc_register_attribute_taxonomies();
-				}
 				return [
 					'id'      => $new_id,
 					'slug'    => $new_taxonomy,
@@ -694,6 +692,7 @@ class WooCommerce {
 				if ( ! $product ) {
 					throw new \Exception( 'Product not found' );
 				}
+				$existing_attribute_count = count( $product->get_attributes() );
 				$product_attributes = [];
 				$auto_position      = 0;
 				foreach ( $args['attributes'] as $attr_data ) {
@@ -708,7 +707,8 @@ class WooCommerce {
 						if ( ! $global_attr || is_wp_error( $global_attr ) ) {
 							throw new \Exception( 'Attribute ID not found: ' . $attr_id );
 						}
-						$taxonomy = wc_attribute_taxonomy_name( $global_attr->slug );
+						// wc_get_attribute() returns slug already prefixed with pa_; don't double-prefix.
+						$taxonomy = $global_attr->slug;
 						$attribute->set_name( $taxonomy );
 						$term_ids = [];
 						foreach ( $attr_data['options'] ?? [] as $option ) {
@@ -730,11 +730,18 @@ class WooCommerce {
 				}
 				$product->set_attributes( $product_attributes );
 				$product->save();
-				return [
+				$response = [
 					'id'              => intval( $args['product_id'] ),
 					'attribute_count' => count( $product_attributes ),
 					'message'         => 'Product attributes updated successfully',
 				];
+				if ( $existing_attribute_count > 0 ) {
+					$response['warning'] = sprintf(
+						'This operation replaced %d existing attribute(s). Any variations using removed attributes may be affected.',
+						$existing_attribute_count
+					);
+				}
+				return $response;
 
 			default:
 				throw new \Exception( 'Unknown WooCommerce tool: ' . esc_html( $name ) );

@@ -129,7 +129,7 @@ class REST_Controller {
             ],
         ]);
 
-        register_rest_route($this->namespace, '/products/attributes/(?P<attribute_id>\d+)/terms', [
+        register_rest_route($this->namespace, '/products/attributes/(?P<attribute_id>[a-z0-9_-]+)/terms', [
             [
                 'methods' => 'GET',
                 'callback' => [$this, 'get_attribute_terms'],
@@ -769,8 +769,26 @@ class REST_Controller {
     public function create_variation($request) {
         $product_id = intval($request['id']);
         $params = $request->get_json_params() ?? [];
-        $params['product_id'] = $product_id;
 
+        // Batch operation: {"batch": {"create": [...], "update": [...], "delete": [...]}}
+        if (isset($params['batch'])) {
+            $batch_args = [
+                'product_id' => $product_id,
+                'create'     => $params['batch']['create'] ?? [],
+                'update'     => $params['batch']['update'] ?? [],
+                'delete'     => $params['batch']['delete'] ?? [],
+            ];
+            try {
+                $result = \Royal_MCP\Integrations\WooCommerce::execute_tool('wc_batch_update_variations', $batch_args);
+                $this->log_request($request, 'success', "Batch updated variations for product {$product_id}");
+                return rest_ensure_response($result);
+            } catch (\Exception $e) {
+                $this->log_request($request, 'error', $e->getMessage());
+                return new \WP_Error('wc_error', $e->getMessage(), ['status' => 400]);
+            }
+        }
+
+        $params['product_id'] = $product_id;
         try {
             $result = \Royal_MCP\Integrations\WooCommerce::execute_tool('wc_create_variation', $params);
             $this->log_request($request, 'success', "Created variation for product {$product_id}");
@@ -860,15 +878,20 @@ class REST_Controller {
     }
 
     public function get_attribute_terms($request) {
-        $attribute_id = intval($request['attribute_id']);
+        $attribute_id_param = $request['attribute_id'];
         $params = $request->get_params();
+        $hide_empty = ($params['hide_empty'] ?? '') === 'true';
+
+        // Route to attribute_id (integer lookup) or taxonomy (slug lookup).
+        if (ctype_digit($attribute_id_param)) {
+            $tool_args = ['attribute_id' => intval($attribute_id_param), 'hide_empty' => $hide_empty];
+        } else {
+            $tool_args = ['taxonomy' => sanitize_text_field($attribute_id_param), 'hide_empty' => $hide_empty];
+        }
 
         try {
-            $result = \Royal_MCP\Integrations\WooCommerce::execute_tool('wc_get_attribute_terms', [
-                'attribute_id' => $attribute_id,
-                'hide_empty'   => ($params['hide_empty'] ?? '') === 'true',
-            ]);
-            $this->log_request($request, 'success', "Retrieved terms for attribute {$attribute_id}");
+            $result = \Royal_MCP\Integrations\WooCommerce::execute_tool('wc_get_attribute_terms', $tool_args);
+            $this->log_request($request, 'success', "Retrieved terms for attribute {$attribute_id_param}");
             return rest_ensure_response($result);
         } catch (\Exception $e) {
             $this->log_request($request, 'error', $e->getMessage());
